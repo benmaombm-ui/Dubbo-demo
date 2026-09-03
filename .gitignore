@@ -1,0 +1,51 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+### AI Enviroment ###
+.history
+.qoder/quests
+.vscode
+.claude
+.aone_copilot
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.flattened-pom.xml
+
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+.DS_Store
+
+### NetBeans ###
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+
+### Enviroment ###
+application.pid
+
+*i18nResourceFile*
+
+### KMS Secrets ###
+secretsmanager.properties
+
+### Logs ###
+*.log
+logs/
+
+### Nacos ###
+nacos/
+
+### OS ###
+Thumbs.db

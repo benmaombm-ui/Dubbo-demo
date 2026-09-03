@@ -1,0 +1,12 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: dubbo-consumer
+
+dubbo:
+  application:
+    name: dubbo-consumer
+  registry:
+    address: nacos://${NACOS_ADDRESS:127.0.0.1:8848}
