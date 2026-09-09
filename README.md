@@ -44,6 +44,15 @@ java -jar dubbo-provider/target/dubbo-provider-1.0.0-SNAPSHOT.jar \
   --dubbo.registry.address=nacos://your-nacos-ip:8848
 ```
 
+To specify a Nacos namespace:
+
+```bash
+java -jar dubbo-provider/target/dubbo-provider-1.0.0-SNAPSHOT.jar \
+  --dubbo.registry.address="nacos://your-nacos-ip:8848?namespace=<your-namespace-id>"
+```
+
+> **Note:** By default, the `public` namespace is used and no extra parameter is needed. If you need to register the service under a specific namespace, use the command above. The `namespace` value must be the namespace **ID** (not the display name) as shown in the Nacos console.
+
 The Provider listens on the following ports by default:
 - HTTP port: `8081`
 - Dubbo protocol port: `20880`
@@ -54,6 +63,15 @@ The Provider listens on the following ports by default:
 java -jar dubbo-consumer/target/dubbo-consumer-1.0.0-SNAPSHOT.jar \
   --dubbo.registry.address=nacos://your-nacos-ip:8848
 ```
+
+To specify a Nacos namespace:
+
+```bash
+java -jar dubbo-consumer/target/dubbo-consumer-1.0.0-SNAPSHOT.jar \
+  --dubbo.registry.address="nacos://your-nacos-ip:8848?namespace=<your-namespace-id>"
+```
+
+> **Note:** By default, the `public` namespace is used and no extra parameter is needed. If you need to connect to a specific namespace, use the command above. The `namespace` value must be the namespace **ID** (not the display name) as shown in the Nacos console. Make sure the Consumer uses the **same namespace** as the Provider, otherwise service discovery will fail.
 
 The Consumer listens on HTTP port `8082` by default.
 
