@@ -7,16 +7,26 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST Controller，通过 Dubbo 调用远程 GreetingService
+ * REST Controller，通过 Dubbo 协议和 Triple 协议调用远程 GreetingService
  */
 @RestController
 public class GreetingController {
 
-    @DubboReference(protocol = "tri")
-    private GreetingService greetingService;
+    @DubboReference(protocol = "dubbo")
+    private GreetingService greetingServiceDubbo;
 
-    @GetMapping("/greeting")
-    public String greeting(@RequestParam(defaultValue = "World") String name) {
-        return greetingService.sayHello(name);
+    @DubboReference(protocol = "tri")
+    private GreetingService greetingServiceTriple;
+
+    // 通过 Dubbo 协议调用
+    @GetMapping("/greeting/dubbo")
+    public String greetingByDubbo(@RequestParam(defaultValue = "World") String name) {
+        return greetingServiceDubbo.sayHello(name);
+    }
+
+    // 通过 Triple 协议调用
+    @GetMapping("/greeting/triple")
+    public String greetingByTriple(@RequestParam(defaultValue = "World") String name) {
+        return greetingServiceTriple.sayHello(name);
     }
 }
