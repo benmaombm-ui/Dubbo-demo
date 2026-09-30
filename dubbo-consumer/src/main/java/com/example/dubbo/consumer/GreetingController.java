@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class GreetingController {
 
-    @DubboReference
+    @DubboReference(protocol = "tri")
     private GreetingService greetingService;
 
     @GetMapping("/greeting")
