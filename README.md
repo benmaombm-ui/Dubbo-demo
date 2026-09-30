@@ -1,14 +1,14 @@
 # Dubbo Demo — Spring Boot + Dubbo 3 + Nacos Microservice Example
 
-A microservice quickstart project based on **Spring Boot 2.7 + Apache Dubbo 3.2 + Nacos**, designed to help you quickly understand the complete workflow of Dubbo RPC calls.
+A microservice quickstart project based on **Spring Boot 2.7 + Apache Dubbo 3.2 + Nacos**, designed to help you quickly understand the complete workflow of Dubbo RPC calls. The project demonstrates **dual-protocol** support — both the classic **Dubbo** protocol and the next-generation **Triple** (gRPC-compatible) protocol — so you can compare them side by side.
 
 The project consists of three modules:
 
-| Module | Description                                                                               |
-|------|-------------------------------------------------------------------------------------------|
-| `dubbo-api` | Service interface definition (`GreetingService`)                                          |
-| `dubbo-provider` | Service provider — implements the interface and registers with Nacos                      |
-| `dubbo-consumer` | Service consumer — invokes the Provider via Dubbo RPC and exposes a REST endpoint to test |
+| Module | Description |
+|------|---|
+| `dubbo-api` | Service interface definition (`GreetingService`) |
+| `dubbo-provider` | Service provider — implements the interface, exposes it over **both Dubbo (port 20880) and Triple (port 50051)** protocols, and registers with Nacos |
+| `dubbo-consumer` | Service consumer — provides two REST endpoints (`/greeting/dubbo` and `/greeting/triple`) that invoke the Provider via the corresponding protocol |
 
 ---
 
@@ -56,6 +56,7 @@ java -jar dubbo-provider/target/dubbo-provider-1.0.0-SNAPSHOT.jar \
 The Provider listens on the following ports by default:
 - HTTP port: `8081`
 - Dubbo protocol port: `20880`
+- Triple protocol port: `50051`
 
 ### Step 2: Start the Consumer
 
@@ -99,14 +100,21 @@ Started ConsumerApplication in x.xxx seconds
 
 ### Verify End-to-End Call
 
+The Consumer exposes two REST endpoints, one for each protocol:
+
 ```bash
-curl http://localhost:8082/greeting?name=Dubbo
+# Verify via Dubbo protocol
+curl http://localhost:8082/greeting/dubbo?name=Dubbo
+
+# Verify via Triple protocol
+curl http://localhost:8082/greeting/triple?name=Triple
 ```
 
-Expected response:
+Expected responses:
 
 ```
 Hello, Dubbo! This response is from Dubbo Provider.
+Hello, Triple! This response is from Dubbo Provider.
 ```
 
 ## 5. Project Structure
@@ -140,57 +148,84 @@ Dubbo-demo/
 **Key Files:**
 
 - **`GreetingService.java`**: Defines the `sayHello(String name)` interface. Both the Provider and Consumer modules depend on this module.
-- **`GreetingServiceImpl.java`**: The concrete implementation of the interface, registered as a Dubbo service via the `@DubboService` annotation.
-- **`GreetingController.java`**: A Spring MVC controller that injects the remote service proxy via `@DubboReference` and exposes the `/greeting` REST endpoint.
+- **`GreetingServiceImpl.java`**: The concrete implementation of the interface. Annotated with `@DubboService(protocol = {"dubbo", "triple"})` to expose the service over **both** Dubbo and Triple protocols simultaneously.
+- **`GreetingController.java`**: A Spring MVC controller with **two** injected service proxies:
+  - `@DubboReference(protocol = "dubbo")` — routes calls through the Dubbo protocol (endpoint `/greeting/dubbo`)
+  - `@DubboReference(protocol = "tri")` — routes calls through the Triple protocol (endpoint `/greeting/triple`)
+  > **Note:** In Dubbo 3.x the SPI name for the Triple protocol is `tri`, not `triple`.
 - **`ProviderApplication.java` / `ConsumerApplication.java`**: Spring Boot application entry points, with `@EnableDubbo` to enable Dubbo functionality.
 
 ---
 
 ## 6. Request Flow
 
-When a user visits `http://localhost:8082/greeting?name=Dubbo`, the complete call flow is illustrated below:
+The Consumer exposes two REST endpoints. Depending on which endpoint the user hits, the call is routed through a different protocol:
 
 ```
   User (curl / browser)
         │
-        │  HTTP GET /greeting?name=Dubbo
-        ▼
-┌───────────────────────────────────────────┐
-│  dubbo-consumer (port 8082)               │
-│                                           │
-│  GreetingController                       │
-│  ├─ @GetMapping("/greeting")              │
-│  └─ @DubboReference → GreetingService     │
-└─────────────────────┬─────────────────────┘
-                      │
-                      │  Dubbo RPC call (port 20880)
-                      │  Provider address resolved via Nacos
-                      ▼
-┌───────────────────────────────────────────┐
-│  dubbo-provider (port 8081)               │
-│                                           │
-│  GreetingServiceImpl                      │
-│  └─ @DubboService                         │
-│     sayHello("Dubbo")                     │
-│       → returns "Hello, Dubbo! ..."       │
-└─────────────────────┬─────────────────────┘
-                      │  Register / Discover
-                      ▼
-┌───────────────────────────────────────────┐
-│  Nacos Registry (port 8848)               │
-│                                           │
-│  ┌─ Provider registers on startup         │
-│  └─ Consumer subscribes on startup        │
-└───────────────────────────────────────────┘
+        ├─ HTTP GET /greeting/dubbo?name=Dubbo
+        │                                 ├─ HTTP GET /greeting/triple?name=Triple
+        ▼                                 ▼
+┌──────────────────────────────────────────────────────────┐
+│  dubbo-consumer (port 8082)                              │
+│                                                          │
+│  GreetingController                                      │
+│  ├─ /greeting/dubbo   → @DubboReference(protocol="dubbo")│
+│  └─ /greeting/triple  → @DubboReference(protocol="tri")  │
+└────────────┬──────────────────────────┬──────────────────┘
+             │                          │
+             │ Dubbo protocol           │ Triple protocol
+             │ (port 20880)             │ (port 50051)
+             ▼                          ▼
+┌──────────────────────────────────────────────────────────┐
+│  dubbo-provider (port 8081)                              │
+│                                                          │
+│  GreetingServiceImpl                                     │
+│  └─ @DubboService(protocol={"dubbo","triple"})           │
+│     sayHello(name)                                       │
+│       → returns "Hello, {name}! ..."                     │
+└────────────────────────┬─────────────────────────────────┘
+                         │  Register / Discover
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│  Nacos Registry (port 8848)                              │
+│                                                          │
+│  ┌─ Provider registers on startup (both protocols)       │
+│  └─ Consumer subscribes on startup                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
 **Step-by-Step Breakdown:**
 
-1. **User sends an HTTP request** — The user sends `GET http://localhost:8082/greeting?name=Dubbo` to the Consumer's REST endpoint via a browser or `curl`.
-2. **Consumer receives the request** — The `@GetMapping("/greeting")` method in `GreetingController` handles the request and calls `greetingService.sayHello("Dubbo")` through the remote service proxy injected by `@DubboReference`.
-3. **Consumer discovers the Provider via Nacos** — Under the hood, the Dubbo framework queries the Nacos registry to obtain the list of Provider instances for `GreetingService` (e.g., `192.168.x.x:20880`) and selects one based on the load balancing strategy.
-4. **Consumer initiates a Dubbo RPC call** — The Consumer sends a remote procedure call to the selected Provider instance over the Dubbo protocol (persistent TCP connection, default port `20880`).
-5. **Provider processes the request and returns the result** — The `GreetingServiceImpl` on the Provider side (annotated with `@DubboService`) executes the `sayHello("Dubbo")` method and produces the return value `"Hello, Dubbo! This response is from Dubbo Provider."`.
-6. **Result is returned to the user** — The Provider sends the result back to the Consumer via the Dubbo protocol, and the Consumer returns it as the HTTP response body to the user.
+1. **User sends an HTTP request** — The user sends either `GET /greeting/dubbo?name=Dubbo` or `GET /greeting/triple?name=Triple` to the Consumer (port `8082`) via a browser or `curl`.
+2. **Consumer receives the request** — `GreetingController` has two handler methods, each backed by a different `@DubboReference` proxy:
+   - `/greeting/dubbo` uses `@DubboReference(protocol = "dubbo")` → calls via the Dubbo protocol.
+   - `/greeting/triple` uses `@DubboReference(protocol = "tri")` → calls via the Triple protocol.
+3. **Consumer discovers the Provider via Nacos** — The Dubbo framework queries the Nacos registry to obtain the list of Provider instances for `GreetingService` and selects one based on the load balancing strategy.
+4. **Consumer initiates the RPC call** — Depending on the chosen protocol:
+   - **Dubbo protocol**: persistent TCP connection to the Provider's port `20880`.
+   - **Triple protocol**: HTTP/2 (gRPC-compatible) connection to the Provider's port `50051`.
+5. **Provider processes the request and returns the result** — `GreetingServiceImpl` (annotated with `@DubboService(protocol = {"dubbo", "triple"})`) executes `sayHello(name)` and returns `"Hello, {name}! This response is from Dubbo Provider."`.
+6. **Result is returned to the user** — The Provider sends the result back through the same protocol, and the Consumer returns it as the HTTP response body.
+
+---
+
+## 7. Dependencies & Protocol Notes
+
+- **Dubbo 3.x built-in Triple support**: Apache Dubbo 3.x ships with the Triple protocol out of the box — no additional Dubbo modules are required.
+- **`protobuf-java` dependency**: The Triple protocol relies on Protocol Buffers for serialization. Both `dubbo-provider` and `dubbo-consumer` include `com.google.protobuf:protobuf-java:3.25.5` as a dependency.
+- **Protocol SPI naming**: In Dubbo 3.x configuration, the Triple protocol's SPI name is **`tri`**, not `triple`. Use `tri` in `@DubboReference(protocol = "tri")` and in YAML configuration (`name: tri`).
+- **Protocol configuration in `application.yml`**: The Provider declares both protocols under `dubbo.protocols`:
+  ```yaml
+  dubbo:
+    protocols:
+      dubbo:
+        name: dubbo
+        port: 20880
+      triple:
+        name: tri
+        port: 50051
+  ```
 
 ---
