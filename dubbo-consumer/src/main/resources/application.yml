@@ -8,5 +8,12 @@ spring:
 dubbo:
   application:
     name: dubbo-consumer
+  protocols:
+    dubbo:
+      name: dubbo
+      port: -1
+    triple:
+      name: tri
+      port: -1
   registry:
     address: nacos://${NACOS_ADDRESS:127.0.0.1:8848}

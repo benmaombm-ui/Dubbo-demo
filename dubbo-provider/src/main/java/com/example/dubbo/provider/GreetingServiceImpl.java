@@ -6,7 +6,7 @@ import org.apache.dubbo.config.annotation.DubboService;
 /**
  * GreetingService 接口实现，注册为 Dubbo 服务
  */
-@DubboService
+@DubboService(protocol = {"dubbo", "triple"})
 public class GreetingServiceImpl implements GreetingService {
 
     @Override

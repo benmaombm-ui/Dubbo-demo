@@ -8,8 +8,12 @@ spring:
 dubbo:
   application:
     name: dubbo-provider
-  protocol:
-    name: dubbo
-    port: 20880
+  protocols:
+    dubbo:
+      name: dubbo
+      port: 20880
+    triple:
+      name: tri
+      port: 50051
   registry:
     address: nacos://${NACOS_ADDRESS:127.0.0.1:8848}
